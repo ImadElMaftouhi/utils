@@ -51,6 +51,12 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Context Files
+GIT_CONVENTIONS.md
+CLAUDE.md
+plan.md
+SKILLS/*
+
 # Translations
 *.mo
 *.pot
