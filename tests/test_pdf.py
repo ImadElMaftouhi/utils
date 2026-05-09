@@ -109,3 +109,70 @@ class TestExtract:
         assert format_bytes(100) == "100 B"
         assert "KB" in format_bytes(1500)
         assert "MB" in format_bytes(1024 * 1024 + 1)
+
+
+class TestRepair:
+    def test_repair_produces_valid_pdf(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        from pypdf import PdfReader
+
+        from pdf.repair import repair_pdf
+
+        dest = tmp_path / "repaired.pdf"
+        orig, repaired = repair_pdf(sample_pdf, dest)
+        assert dest.exists()
+        assert orig > 0
+        assert repaired > 0
+        # Output is openable
+        reader = PdfReader(str(dest))
+        assert len(reader.pages) == 1
+
+    def test_repair_format_bytes(self):
+        from pdf.repair import format_bytes
+
+        assert format_bytes(100) == "100 B"
+        assert "KB" in format_bytes(1500)
+
+
+class TestRedact:
+    def test_parse_region_valid(self):
+        from pdf.redact import parse_region
+
+        assert parse_region("10,20,100,50") == (10.0, 20.0, 100.0, 50.0)
+
+    def test_parse_region_wrong_arity(self):
+        from pdf.redact import parse_region
+
+        with pytest.raises(ValueError, match="x,y,w,h"):
+            parse_region("10,20,30")
+
+    def test_parse_region_negative_size(self):
+        from pdf.redact import parse_region
+
+        with pytest.raises(ValueError, match="positive"):
+            parse_region("0,0,-5,10")
+
+    def test_redact_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.redact import redact_pdf
+
+        dest = tmp_path / "redacted.pdf"
+        regions = [(50.0, 100.0, 200.0, 30.0)]
+        count = redact_pdf(sample_pdf_multi, dest, regions, pages_spec=None)
+        assert dest.exists()
+        assert count == 5
+
+    def test_redact_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.redact import redact_pdf
+
+        dest = tmp_path / "redacted.pdf"
+        regions = [(50.0, 100.0, 200.0, 30.0)]
+        count = redact_pdf(sample_pdf_multi, dest, regions, pages_spec="1-2")
+        assert count == 2
+
+    def test_redact_empty_regions_raises(self, sample_pdf: Path, tmp_path: Path):
+        from pdf.redact import redact_pdf
+
+        with pytest.raises(ValueError, match="region"):
+            redact_pdf(sample_pdf, tmp_path / "out.pdf", regions=[], pages_spec=None)
