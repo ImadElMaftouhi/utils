@@ -10,6 +10,7 @@ Utilities for PDF compression, merging, splitting, and text extraction.
 | `merge.py` | Merge multiple PDFs into one |
 | `split.py` | Split a PDF into individual pages or ranges |
 | `extract.py` | Extract text or images from a PDF |
+| `images_to_pdf.py` | Combine images into a single PDF (one per page) |
 
 ## Setup
 
@@ -31,6 +32,9 @@ python split.py --input doc.pdf --pages 1-3 --output part.pdf
 
 # Extract text
 python extract.py --input doc.pdf --output text.txt
+
+# Combine images into a single PDF
+python images_to_pdf.py photo1.jpg photo2.jpg photo3.jpg -o album.pdf
 ```
 
 ## Dependencies
