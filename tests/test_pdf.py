@@ -109,3 +109,95 @@ class TestExtract:
         assert format_bytes(100) == "100 B"
         assert "KB" in format_bytes(1500)
         assert "MB" in format_bytes(1024 * 1024 + 1)
+
+
+class TestRotate:
+    def test_rotate_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "rotated.pdf"
+        count = rotate_pdf(sample_pdf_multi, dest, angle=90, pages_spec=None)
+        assert dest.exists()
+        assert count == 5
+
+    def test_rotate_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "rotated.pdf"
+        count = rotate_pdf(sample_pdf_multi, dest, angle=180, pages_spec="1-2")
+        assert count == 2
+
+    def test_rotate_invalid_pages(self, sample_pdf: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "out.pdf"
+        with pytest.raises(ValueError):
+            rotate_pdf(sample_pdf, dest, angle=90, pages_spec="10")
+
+
+class TestOrganize:
+    def test_reorder_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pypdf import PdfReader
+
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "reordered.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="5,4,3,2,1")
+        assert count == 5
+        reader = PdfReader(str(dest))
+        assert len(reader.pages) == 5
+
+    def test_drop_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "trimmed.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="1,3,5")
+        assert count == 3
+
+    def test_duplicate_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "dup.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="1,1,2,2")
+        assert count == 4
+
+    def test_parse_order_range(self):
+        from pdf.organize import parse_order_spec
+
+        assert parse_order_spec("1-3", 5) == [0, 1, 2]
+
+    def test_parse_order_invalid(self):
+        from pdf.organize import parse_order_spec
+
+        with pytest.raises(ValueError):
+            parse_order_spec("99", 5)
+
+
+class TestCrop:
+    def test_crop_uniform_margin(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pypdf import PdfReader
+
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "cropped.pdf"
+        count = crop_pdf(sample_pdf_multi, dest, top=10, right=10, bottom=10, left=10, pages_spec=None)
+        assert count == 5
+        reader = PdfReader(str(dest))
+        page0 = reader.pages[0]
+        # original cropbox was 612 x 792; cropped by 10 each side = 592 x 772
+        assert float(page0.cropbox.width) == 592
+        assert float(page0.cropbox.height) == 772
+
+    def test_crop_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "cropped.pdf"
+        count = crop_pdf(sample_pdf_multi, dest, top=20, right=0, bottom=0, left=0, pages_spec="1-2")
+        assert count == 2
+
+    def test_crop_too_much_raises(self, sample_pdf: Path, tmp_path: Path):
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "out.pdf"
+        with pytest.raises(ValueError, match="exceed"):
+            crop_pdf(sample_pdf, dest, top=500, right=500, bottom=500, left=500, pages_spec=None)
