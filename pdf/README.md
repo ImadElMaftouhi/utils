@@ -10,6 +10,8 @@ Utilities for PDF compression, merging, splitting, and text extraction.
 | `merge.py` | Merge multiple PDFs into one |
 | `split.py` | Split a PDF into individual pages or ranges |
 | `extract.py` | Extract text or images from a PDF |
+| `watermark.py` | Stamp text or image watermark on pages |
+| `paginate.py` | Add formatted page numbers to pages |
 
 ## Setup
 
@@ -31,6 +33,12 @@ python split.py --input doc.pdf --pages 1-3 --output part.pdf
 
 # Extract text
 python extract.py --input doc.pdf --output text.txt
+
+# Stamp "DRAFT" watermark
+python watermark.py doc.pdf -o out_dir/ --text "DRAFT" --opacity 0.3 --angle 45
+
+# Add page numbers
+python paginate.py doc.pdf -o out_dir/ --format "Page {n} of {total}"
 ```
 
 ## Dependencies
@@ -38,4 +46,6 @@ python extract.py --input doc.pdf --output text.txt
 ```
 pypdf>=4.0.0
 pikepdf>=8.0.0
+Pillow>=10.0.0
+reportlab>=4.0.0
 ```
