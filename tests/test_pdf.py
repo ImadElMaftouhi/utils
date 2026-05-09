@@ -109,3 +109,67 @@ class TestExtract:
         assert format_bytes(100) == "100 B"
         assert "KB" in format_bytes(1500)
         assert "MB" in format_bytes(1024 * 1024 + 1)
+
+
+class TestProtect:
+    def test_protect_creates_encrypted_pdf(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+
+        dest = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, dest, user_password="secret", owner_password=None,
+                    allow_print=True, allow_copy=True)
+        assert dest.exists()
+        # Confirm the file is actually encrypted
+        with pytest.raises(pikepdf.PasswordError):
+            pikepdf.open(dest)
+        # Confirm the password works
+        with pikepdf.open(dest, password="secret") as pdf:
+            assert len(pdf.pages) == 1
+
+    def test_protect_no_print_permission(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+
+        dest = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, dest, user_password="x", owner_password=None,
+                    allow_print=False, allow_copy=True)
+        with pikepdf.open(dest, password="x") as pdf:
+            assert pdf.allow.print_lowres is False
+
+
+class TestUnlock:
+    def test_unlock_removes_encryption(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+        from pdf.unlock import unlock_pdf
+
+        locked = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, locked, user_password="key", owner_password=None,
+                    allow_print=True, allow_copy=True)
+
+        unlocked = tmp_path / "open.pdf"
+        unlock_pdf(locked, unlocked, password="key")
+        assert unlocked.exists()
+        # No password should be required now
+        with pikepdf.open(unlocked) as pdf:
+            assert len(pdf.pages) == 1
+
+    def test_unlock_wrong_password_raises(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+        from pdf.unlock import unlock_pdf
+
+        locked = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, locked, user_password="right", owner_password=None,
+                    allow_print=True, allow_copy=True)
+        with pytest.raises(pikepdf.PasswordError):
+            unlock_pdf(locked, tmp_path / "out.pdf", password="wrong")
