@@ -159,3 +159,223 @@ class TestImagesToPdf:
 
         with pytest.raises(ValueError, match="Unknown page size"):
             images_to_pdf([sample_jpeg], tmp_path / "x.pdf", page_size="A3", margin=0)
+class TestProtect:
+    def test_protect_creates_encrypted_pdf(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+
+        dest = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, dest, user_password="secret", owner_password=None,
+                    allow_print=True, allow_copy=True)
+        assert dest.exists()
+        # Confirm the file is actually encrypted
+        with pytest.raises(pikepdf.PasswordError):
+            pikepdf.open(dest)
+        # Confirm the password works
+        with pikepdf.open(dest, password="secret") as pdf:
+            assert len(pdf.pages) == 1
+
+    def test_protect_no_print_permission(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+
+        dest = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, dest, user_password="x", owner_password=None,
+                    allow_print=False, allow_copy=True)
+        with pikepdf.open(dest, password="x") as pdf:
+            assert pdf.allow.print_lowres is False
+
+
+class TestUnlock:
+    def test_unlock_removes_encryption(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+        from pdf.unlock import unlock_pdf
+
+        locked = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, locked, user_password="key", owner_password=None,
+                    allow_print=True, allow_copy=True)
+
+        unlocked = tmp_path / "open.pdf"
+        unlock_pdf(locked, unlocked, password="key")
+        assert unlocked.exists()
+        # No password should be required now
+        with pikepdf.open(unlocked) as pdf:
+            assert len(pdf.pages) == 1
+
+    def test_unlock_wrong_password_raises(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pikepdf")
+        import pikepdf
+
+        from pdf.protect import protect_pdf
+        from pdf.unlock import unlock_pdf
+
+        locked = tmp_path / "locked.pdf"
+        protect_pdf(sample_pdf, locked, user_password="right", owner_password=None,
+                    allow_print=True, allow_copy=True)
+        with pytest.raises(pikepdf.PasswordError):
+            unlock_pdf(locked, tmp_path / "out.pdf", password="wrong")
+class TestWatermark:
+    def test_watermark_text_stamps_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_text
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_text(
+            sample_pdf_multi, dest, text="DRAFT", opacity=0.3, angle=45,
+            position="center", font_size=72, pages_spec=None,
+        )
+        assert dest.exists()
+        assert count == 5
+
+    def test_watermark_text_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_text
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_text(
+            sample_pdf_multi, dest, text="X", opacity=0.5, angle=0,
+            position="bottom-right", font_size=24, pages_spec="1-2",
+        )
+        assert count == 2
+
+    def test_watermark_image_stamps_pages(self, sample_pdf: Path, sample_png: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_image
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_image(sample_pdf, dest, sample_png, opacity=0.5, position="center", pages_spec=None)
+        assert dest.exists()
+        assert count == 1
+
+
+class TestPaginate:
+    def test_paginate_default_format(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf_multi, dest, fmt="Page {n} of {total}",
+            position="bottom-center", start=1, font_size=10,
+        )
+        assert dest.exists()
+        assert count == 5
+
+    def test_paginate_with_offset_start(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf_multi, dest, fmt="{n}",
+            position="top-right", start=10, font_size=12,
+        )
+        assert count == 5
+
+    def test_paginate_custom_format(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf, dest, fmt="-- {n} --",
+            position="bottom-left", start=1, font_size=8,
+        )
+        assert count == 1
+class TestRotate:
+    def test_rotate_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "rotated.pdf"
+        count = rotate_pdf(sample_pdf_multi, dest, angle=90, pages_spec=None)
+        assert dest.exists()
+        assert count == 5
+
+    def test_rotate_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "rotated.pdf"
+        count = rotate_pdf(sample_pdf_multi, dest, angle=180, pages_spec="1-2")
+        assert count == 2
+
+    def test_rotate_invalid_pages(self, sample_pdf: Path, tmp_path: Path):
+        from pdf.rotate import rotate_pdf
+
+        dest = tmp_path / "out.pdf"
+        with pytest.raises(ValueError):
+            rotate_pdf(sample_pdf, dest, angle=90, pages_spec="10")
+
+
+class TestOrganize:
+    def test_reorder_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pypdf import PdfReader
+
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "reordered.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="5,4,3,2,1")
+        assert count == 5
+        reader = PdfReader(str(dest))
+        assert len(reader.pages) == 5
+
+    def test_drop_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "trimmed.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="1,3,5")
+        assert count == 3
+
+    def test_duplicate_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.organize import organize_pdf
+
+        dest = tmp_path / "dup.pdf"
+        count = organize_pdf(sample_pdf_multi, dest, order_spec="1,1,2,2")
+        assert count == 4
+
+    def test_parse_order_range(self):
+        from pdf.organize import parse_order_spec
+
+        assert parse_order_spec("1-3", 5) == [0, 1, 2]
+
+    def test_parse_order_invalid(self):
+        from pdf.organize import parse_order_spec
+
+        with pytest.raises(ValueError):
+            parse_order_spec("99", 5)
+
+
+class TestCrop:
+    def test_crop_uniform_margin(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pypdf import PdfReader
+
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "cropped.pdf"
+        count = crop_pdf(sample_pdf_multi, dest, top=10, right=10, bottom=10, left=10, pages_spec=None)
+        assert count == 5
+        reader = PdfReader(str(dest))
+        page0 = reader.pages[0]
+        # original cropbox was 612 x 792; cropped by 10 each side = 592 x 772
+        assert float(page0.cropbox.width) == 592
+        assert float(page0.cropbox.height) == 772
+
+    def test_crop_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "cropped.pdf"
+        count = crop_pdf(sample_pdf_multi, dest, top=20, right=0, bottom=0, left=0, pages_spec="1-2")
+        assert count == 2
+
+    def test_crop_too_much_raises(self, sample_pdf: Path, tmp_path: Path):
+        from pdf.crop import crop_pdf
+
+        dest = tmp_path / "out.pdf"
+        with pytest.raises(ValueError, match="exceed"):
+            crop_pdf(sample_pdf, dest, top=500, right=500, bottom=500, left=500, pages_spec=None)
