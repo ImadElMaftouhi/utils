@@ -1,6 +1,6 @@
 # 📄 pdf
 
-Utilities for PDF compression, merging, splitting, and text extraction.
+Utilities for PDF compression, merging, splitting, extraction, and page operations.
 
 ## Scripts
 
@@ -12,6 +12,9 @@ Utilities for PDF compression, merging, splitting, and text extraction.
 | `extract.py` | Extract text or images from a PDF |
 | `watermark.py` | Stamp text or image watermark on pages |
 | `paginate.py` | Add formatted page numbers to pages |
+| `rotate.py` | Rotate pages by 90, 180, or 270 degrees |
+| `organize.py` | Reorder, delete, or duplicate pages by spec |
+| `crop.py` | Crop page margins (in points) |
 
 ## Setup
 
@@ -23,22 +26,25 @@ pip install -r requirements.txt
 
 ```bash
 # Compress PDF
-python compress.py --input large.pdf --output small.pdf
+python compress.py large.pdf -o out_dir/
 
 # Merge PDFs
-python merge.py --inputs a.pdf b.pdf c.pdf --output merged.pdf
+python merge.py a.pdf b.pdf c.pdf -o merged.pdf
 
 # Split PDF (pages 1-3)
-python split.py --input doc.pdf --pages 1-3 --output part.pdf
+python split.py doc.pdf -o out_dir/ --pages 1-3
 
 # Extract text
-python extract.py --input doc.pdf --output text.txt
+python extract.py doc.pdf -o text.txt
 
-# Stamp "DRAFT" watermark
-python watermark.py doc.pdf -o out_dir/ --text "DRAFT" --opacity 0.3 --angle 45
+# Rotate pages 1-3 by 90°
+python rotate.py doc.pdf -o out_dir/ --angle 90 --pages 1-3
 
-# Add page numbers
-python paginate.py doc.pdf -o out_dir/ --format "Page {n} of {total}"
+# Reorder pages (3rd, 1st, 2nd; drop the rest)
+python organize.py doc.pdf -o out_dir/ --order "3,1,2"
+
+# Crop 36pt off all four margins
+python crop.py doc.pdf -o out_dir/ --margin 36
 ```
 
 ## Dependencies
