@@ -10,6 +10,9 @@ Utilities for PDF compression, merging, splitting, extraction, and page operatio
 | `merge.py` | Merge multiple PDFs into one |
 | `split.py` | Split a PDF into individual pages or ranges |
 | `extract.py` | Extract text or images from a PDF |
+| `ocr.py` | OCR scanned PDFs into searchable PDFs (opt-in deps) |
+| `pdf_to_word.py` | Convert PDF to DOCX (opt-in dep, lossy) |
+| `html_to_pdf.py` | Render static HTML/URL to PDF, no JavaScript (opt-in dep) |
 | `repair.py` | Recover data from corrupt PDFs by re-saving with pikepdf |
 | `redact.py` | Visual redaction (overlay opaque rectangles) — see warning below |
 | `images_to_pdf.py` | Combine images into a single PDF (one per page) |
@@ -42,6 +45,18 @@ python split.py doc.pdf -o out_dir/ --pages 1-3
 # Extract text
 python extract.py --input doc.pdf --output text.txt
 
+# OCR a scanned PDF into searchable PDF (requires system tesseract + poppler)
+pip install pytesseract pdf2image
+python ocr.py scan.pdf -o out_dir/ --language eng --dpi 300
+
+# Convert PDF to DOCX (best-effort fidelity)
+pip install pdf2docx
+python pdf_to_word.py report.pdf -o out_dir/
+
+# Convert static HTML or URL to PDF (no JavaScript execution)
+pip install weasyprint
+python html_to_pdf.py page.html -o page.pdf
+python html_to_pdf.py https://example.com -o example.pdf
 # Repair a corrupt PDF
 python repair.py broken.pdf -o out_dir/
 
@@ -68,10 +83,34 @@ python crop.py doc.pdf -o out_dir/ --margin 36
 
 ## Dependencies
 
+Core (always required):
+
 ```
 pypdf>=4.0.0
 pikepdf>=8.0.0
 Pillow>=10.0.0
+```
+
+Opt-in (install only what you need):
+
+| Script | Python deps | System deps |
+|--------|-------------|-------------|
+| `ocr.py` | `pytesseract`, `pdf2image` | `tesseract`, `poppler-utils` |
+| `pdf_to_word.py` | `pdf2docx` | — |
+| `html_to_pdf.py` | `weasyprint` | `pango`, `cairo`, `gdk-pixbuf` (Linux) |
+
+## Future Web Integration
+
+These features are deferred to a future browser-based companion app
+because they require JavaScript execution, interactive UIs, cryptographic
+certificates, or commercial conversion engines:
+
+- Sign PDF, PDF Forms (interactive UI + crypto)
+- Compare PDF, Edit PDF (visual UI)
+- Scan to PDF (browser camera API)
+- AI Summarizer, Translate PDF (LLM/translation APIs)
+- PDF to PowerPoint/Excel, Office formats → PDF (commercial-quality engines)
+- HTML → PDF with JavaScript rendering (headless browser like Playwright)
 reportlab>=4.0.0
 ```
 

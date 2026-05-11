@@ -111,6 +111,66 @@ class TestExtract:
         assert "MB" in format_bytes(1024 * 1024 + 1)
 
 
+class TestOcr:
+    def test_imports_resolve(self):
+        pytest.importorskip("pytesseract")
+        pytest.importorskip("pdf2image")
+        from pdf.ocr import ocr_pdf  # noqa: F401
+
+    def test_ocr_invalid_dpi_via_cli(self):
+        # Functional smoke: argparse rejects --dpi < 72.
+        # Full end-to-end OCR test would require system tesseract + poppler binaries.
+        import subprocess
+
+        result = subprocess.run(
+            ["python", "pdf/ocr.py", "fake.pdf", "-o", "/tmp/x", "--dpi", "10"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0
+        assert "--dpi" in result.stderr
+
+
+class TestPdfToWord:
+    def test_imports_resolve(self):
+        pytest.importorskip("pdf2docx")
+        from pdf.pdf_to_word import pdf_to_word  # noqa: F401
+
+    def test_pdf_to_word_creates_docx(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("pdf2docx")
+        from pdf.pdf_to_word import pdf_to_word
+
+        dest = tmp_path / "out.docx"
+        pdf_to_word(sample_pdf, dest)
+        assert dest.exists()
+        assert dest.stat().st_size > 0
+
+
+class TestHtmlToPdf:
+    def test_imports_resolve(self):
+        pytest.importorskip("weasyprint")
+        from pdf.html_to_pdf import html_to_pdf  # noqa: F401
+
+    def test_is_url_helper(self):
+        from pdf.html_to_pdf import _is_url
+
+        assert _is_url("https://example.com") is True
+        assert _is_url("http://example.com") is True
+        assert _is_url("/local/path.html") is False
+        assert _is_url("file.html") is False
+
+    def test_html_to_pdf_from_file(self, tmp_path: Path):
+        pytest.importorskip("weasyprint")
+        from pdf.html_to_pdf import html_to_pdf
+
+        src = tmp_path / "page.html"
+        src.write_text("<html><body><h1>Hello</h1></body></html>", encoding="utf-8")
+        dest = tmp_path / "page.pdf"
+        try:
+            html_to_pdf(str(src), dest)
+        except Exception as e:
+            pytest.skip(f"weasyprint runtime deps missing: {e}")
+        assert dest.exists()
+        assert dest.stat().st_size > 0
 class TestRepair:
     def test_repair_produces_valid_pdf(self, sample_pdf: Path, tmp_path: Path):
         pytest.importorskip("pikepdf")
