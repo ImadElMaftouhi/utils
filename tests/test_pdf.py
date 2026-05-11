@@ -111,6 +111,76 @@ class TestExtract:
         assert "MB" in format_bytes(1024 * 1024 + 1)
 
 
+<<<<<<< feature/pdf-stamps
+class TestWatermark:
+    def test_watermark_text_stamps_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_text
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_text(
+            sample_pdf_multi, dest, text="DRAFT", opacity=0.3, angle=45,
+            position="center", font_size=72, pages_spec=None,
+        )
+        assert dest.exists()
+        assert count == 5
+
+    def test_watermark_text_subset(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_text
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_text(
+            sample_pdf_multi, dest, text="X", opacity=0.5, angle=0,
+            position="bottom-right", font_size=24, pages_spec="1-2",
+        )
+        assert count == 2
+
+    def test_watermark_image_stamps_pages(self, sample_pdf: Path, sample_png: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.watermark import watermark_image
+
+        dest = tmp_path / "wm.pdf"
+        count = watermark_image(sample_pdf, dest, sample_png, opacity=0.5, position="center", pages_spec=None)
+        assert dest.exists()
+        assert count == 1
+
+
+class TestPaginate:
+    def test_paginate_default_format(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf_multi, dest, fmt="Page {n} of {total}",
+            position="bottom-center", start=1, font_size=10,
+        )
+        assert dest.exists()
+        assert count == 5
+
+    def test_paginate_with_offset_start(self, sample_pdf_multi: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf_multi, dest, fmt="{n}",
+            position="top-right", start=10, font_size=12,
+        )
+        assert count == 5
+
+    def test_paginate_custom_format(self, sample_pdf: Path, tmp_path: Path):
+        pytest.importorskip("reportlab")
+        from pdf.paginate import add_page_numbers
+
+        dest = tmp_path / "numbered.pdf"
+        count = add_page_numbers(
+            sample_pdf, dest, fmt="-- {n} --",
+            position="bottom-left", start=1, font_size=8,
+        )
+        assert count == 1
+=======
 class TestRotate:
     def test_rotate_all_pages(self, sample_pdf_multi: Path, tmp_path: Path):
         from pdf.rotate import rotate_pdf
@@ -201,3 +271,4 @@ class TestCrop:
         dest = tmp_path / "out.pdf"
         with pytest.raises(ValueError, match="exceed"):
             crop_pdf(sample_pdf, dest, top=500, right=500, bottom=500, left=500, pages_spec=None)
+>>>>>>> develop

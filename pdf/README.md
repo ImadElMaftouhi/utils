@@ -10,6 +10,8 @@ Utilities for PDF compression, merging, splitting, extraction, and page operatio
 | `merge.py` | Merge multiple PDFs into one |
 | `split.py` | Split a PDF into individual pages or ranges |
 | `extract.py` | Extract text or images from a PDF |
+| `watermark.py` | Stamp text or image watermark on pages |
+| `paginate.py` | Add formatted page numbers to pages |
 | `rotate.py` | Rotate pages by 90, 180, or 270 degrees |
 | `organize.py` | Reorder, delete, or duplicate pages by spec |
 | `crop.py` | Crop page margins (in points) |
@@ -51,4 +53,5 @@ python crop.py doc.pdf -o out_dir/ --margin 36
 pypdf>=4.0.0
 pikepdf>=8.0.0
 Pillow>=10.0.0
+reportlab>=4.0.0
 ```
