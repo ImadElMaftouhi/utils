@@ -1,4 +1,9 @@
+# Install per-module dependencies from each subdirectory's requirements.txt.
+# This file lists the combined deps for convenience; prefer per-folder installs.
+Pillow>=10.0.0
+pypdf>=4.0.0
+pikepdf>=8.0.0
 numpy
 pandas
-Pillow
-pathlib
+pyyaml>=6.0
+tomli>=2.0.0
